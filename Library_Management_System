@@ -1,0 +1,167 @@
+
+import pandas as pd
+import os
+
+# ============================
+#  LOAD OR CREATE DATABASE FILES
+# ============================
+
+def load_csv(file, columns):
+    if os.path.exists(file):
+        return pd.read_csv(file)
+    else:
+        df = pd.DataFrame(columns=columns)
+        df.to_csv(file, index=False)
+        return df
+
+books = load_csv("books.csv", ["Book_ID", "Title", "Author", "Quantity"])
+students = load_csv("students.csv", ["Student_ID", "Student_Name"])
+issue_records = load_csv("issue_records.csv", ["Book_ID", "Student_ID", "Status"])
+
+# ============================
+#  SAVE ALL CHANGES
+# ============================
+
+def save_data():
+    books.to_csv("books.csv", index=False)
+    students.to_csv("students.csv", index=False)
+    issue_records.to_csv("issue_records.csv", index=False)
+
+# ============================
+#  ADD BOOK
+# ============================
+
+def add_book():
+    try:
+        book_id = input("Enter Book ID: ")
+        title = input("Enter Book Title: ")
+        author = input("Enter Author Name: ")
+        qty = int(input("Enter Quantity: "))
+
+        global books
+        books.loc[len(books)] = [book_id, title, author, qty]
+        save_data()
+        print("\n✔ Book Added Successfully!\n")
+    except:
+        print("❌ Invalid input! Try again.")
+
+# ============================
+#  DISPLAY BOOKS
+# ============================
+
+def display_books():
+    if books.empty:
+        print("No books available.\n")
+    else:
+        print("\n------ BOOK LIST ------")
+        print(books)
+        print()
+
+# ============================
+#  SEARCH BOOK
+# ============================
+
+def search_book():
+    key = input("Search by ID or Title: ").lower()
+    result = books[
+        (books["Book_ID"].astype(str).str.lower() == key) |
+        (books["Title"].str.lower().str.contains(key))
+    ]
+
+    if result.empty:
+        print("❌ Book Not Found!\n")
+    else:
+        print("\n✔ Book Found:")
+        print(result)
+        print()
+
+# ============================
+#  ISSUE BOOK
+# ============================
+
+def issue_book():
+    b_id = input("Enter Book ID: ")
+    s_id = input("Enter Student ID: ")
+
+    # Check book exists
+    book_row = books[books["Book_ID"] == b_id]
+    if book_row.empty:
+        print("❌ Book ID not found!")
+        return
+
+    # Check quantity
+    qty = int(book_row["Quantity"].values[0])
+    if qty <= 0:
+        print("❌ Book is currently unavailable!")
+        return
+
+    # Issue book
+    global issue_records
+    issue_records.loc[len(issue_records)] = [b_id, s_id, "Issued"]
+    books.loc[books["Book_ID"] == b_id, "Quantity"] = qty - 1
+
+    save_data()
+    print("\n✔ Book Issued Successfully!\n")
+
+# ============================
+#  RETURN BOOK
+# ============================
+
+def return_book():
+    b_id = input("Enter Book ID: ")
+    s_id = input("Enter Student ID: ")
+
+    issued = issue_records[
+        (issue_records["Book_ID"] == b_id) &
+        (issue_records["Student_ID"] == s_id) &
+        (issue_records["Status"] == "Issued")
+    ]
+
+    if issued.empty:
+        print("❌ No record found for issued book!")
+        return
+
+    # Mark as returned
+    issue_records.loc[issued.index, "Status"] = "Returned"
+
+    # Increase book quantity
+    books.loc[books["Book_ID"] == b_id, "Quantity"] += 1
+
+    save_data()
+    print("\n✔ Book Returned Successfully!\n")
+
+# ============================
+#  MAIN MENU
+# ============================
+
+def menu():
+    while True:
+        print("\n=========== LIBRARY MANAGEMENT SYSTEM ===========")
+        print("1. Add Book")
+        print("2. Display Books")
+        print("3. Search Book")
+        print("4. Issue Book")
+        print("5. Return Book")
+        print("6. Exit")
+
+        choice = input("Enter your choice: ")
+
+        if choice == "1":
+            add_book()
+        elif choice == "2":
+            display_books()
+        elif choice == "3":
+            search_book()
+        elif choice == "4":
+            issue_book()
+        elif choice == "5":
+            return_book()
+        elif choice == "6":
+            print("Exiting Program...")
+            break
+        else:
+            print("❌ Invalid choice! Please try again.")
+
+# Run the menu
+menu()
+
